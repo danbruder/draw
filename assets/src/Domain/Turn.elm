@@ -25,3 +25,32 @@ type alias Guess =
     , value : String
     , correct : Bool
     }
+
+
+toString : Turn -> String
+toString turn =
+    case turn of
+        WaitingForUsersToJoin ->
+            "Waiting to join"
+
+        TakingATurn _ ->
+            "Taking a turn"
+
+        EndingATurn ->
+            "Ending"
+
+        ChoosingAWord _ ->
+            "Choosing a word"
+
+
+userIsActive : User -> Turn -> Bool
+userIsActive user turn =
+    case turn of
+        TakingATurn { artist } ->
+            artist.id == user.id
+
+        ChoosingAWord { artist } ->
+            artist.id == user.id
+
+        _ ->
+            False

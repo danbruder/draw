@@ -14,7 +14,7 @@ import Page
 import Request
 import Shared
 import Tailwind.Breakpoints as TB
-import Tailwind.Utilities as TW
+import Tailwind.Utilities as TW exposing (..)
 import View exposing (View)
 
 
@@ -42,7 +42,7 @@ type alias Model =
 init : ( Model, Cmd Msg )
 init =
     ( { game = Game.init
-      , me = Nothing
+      , me = Just (User.init "Dan")
       , nameInput = ""
       }
     , Cmd.none
@@ -56,11 +56,20 @@ init =
 type Msg
     = TypedInNameField String
     | ClickedSetName
+    | ClickedStart
+    | ClickedWordOption String
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        ClickedWordOption word ->
+            ( { model
+                | game = Game.wordChosen word model.game
+              }
+            , Cmd.none
+            )
+
         ClickedSetName ->
             ( { model
                 | nameInput = ""
@@ -71,6 +80,13 @@ update msg model =
 
         TypedInNameField name ->
             ( { model | nameInput = name }, Cmd.none )
+
+        ClickedStart ->
+            ( { model
+                | game = Game.start model.game
+              }
+            , Cmd.none
+            )
 
 
 
@@ -90,20 +106,27 @@ view : Model -> View Msg
 view model =
     { title = "Room 123"
     , body =
-        [ H.toUnstyled <|
+        [ -- Like this:
+          H.toUnstyled <|
             H.div []
-                [ H.h1 [] [ H.text "Room 123" ]
-                , case model.game.turn of
-                    Turn.WaitingForUsersToJoin ->
-                        case model.me of
-                            Nothing ->
-                                viewUserJoin model
+                [ Css.Global.global globalStyles
+                , case model.me of
+                    Nothing ->
+                        viewUserJoin model
 
-                            Just me ->
+                    Just me ->
+                        case model.game.turn of
+                            Turn.WaitingForUsersToJoin ->
                                 viewWaitingForOthersToJoin me model
 
-                    _ ->
-                        Debug.todo ""
+                            Turn.ChoosingAWord subModel ->
+                                viewChoosingAWord me subModel model
+
+                            Turn.TakingATurn subModel ->
+                                viewTakingATurn me subModel model
+
+                            _ ->
+                                Debug.todo ""
                 ]
         ]
     }
@@ -126,13 +149,152 @@ viewUserJoin model =
         ]
 
 
-viewWaitingForOthersToJoin user model =
+viewTakingATurn user subModel model =
+    if Turn.userIsActive user model.game.turn then
+        viewBase
+            [ viewDrawing
+            , viewUserList model
+            ]
+            model
+
+    else
+        viewBase
+            [ viewReadonlyDrawing
+            , viewGuessingInput model
+            , viewUserList model
+            ]
+            model
+
+
+viewChoosingAWord user subModel model =
+    if Turn.userIsActive user model.game.turn then
+        viewBase
+            [ viewWordSelection subModel
+            , viewUserList model
+            ]
+            model
+
+    else
+        viewBase
+            [ viewDrawing
+            , viewUserList model
+            ]
+            model
+
+
+viewGuessingInput model =
     H.div []
-        [ H.h1 []
-            [ H.text ("Hello, " ++ user.id) ]
-        , viewDrawing
+        [ H.input [] [] ]
+
+
+viewWordSelection { words } =
+    let
+        viewWordOption word =
+            H.li
+                [ HE.onClick (ClickedWordOption word)
+                ]
+                [ H.text word ]
+    in
+    H.div []
+        [ H.text "Choose a word :)"
+        , H.ul [] <| List.map viewWordOption words
         ]
 
 
+viewBase content model =
+    H.div []
+        [ viewHeader
+        , H.div
+            [ css
+                [ flex
+                , justify_between
+                ]
+            ]
+            content
+        , viewControls model
+        ]
+
+
+viewWaitingForOthersToJoin user model =
+    viewBase
+        [ viewDrawing
+        , viewUserList model
+        ]
+        model
+
+
+viewHeader =
+    H.div
+        [ css
+            [ flex
+            , justify_center
+            , text_sm
+            , text_gray_600
+            , uppercase
+            , font_bold
+            , bg_gray_100
+            , p_2
+            ]
+        ]
+        [ H.text "Room 123" ]
+
+
 viewDrawing =
-    H.div [] [ H.text "Drawing" ]
+    H.div
+        [ css
+            [ w_72
+            , h_72
+            , border
+            , shadow
+            , rounded
+            ]
+        ]
+        [ H.text "Drawing" ]
+
+
+viewReadonlyDrawing =
+    H.div
+        [ css
+            [ w_72
+            , h_72
+            , border
+            , shadow
+            , rounded
+            ]
+        ]
+        [ H.text "Read only Drawing" ]
+
+
+viewUserList model =
+    let
+        viewUser user =
+            H.div [] [ H.text user.id ]
+    in
+    H.div
+        [ css
+            [ p_8
+            , w_40
+            ]
+        ]
+    <|
+        List.map viewUser (Game.users model.game)
+
+
+viewControls model =
+    H.div
+        []
+        [ case model.game.turn of
+            Turn.WaitingForUsersToJoin ->
+                H.button
+                    [ css [ bg_purple_200, text_red_500, font_bold, border, p_4, rounded, border_purple_300, shadow ]
+                    , HE.onClick ClickedStart
+                    ]
+                    [ H.text "Start" ]
+
+            _ ->
+                H.text ""
+        , H.div [] [ H.text "Game State:" ]
+        , H.div []
+            [ model.game.turn |> Turn.toString |> H.text
+            ]
+        ]
