@@ -1,5 +1,6 @@
 module Domain.Turn exposing (..)
 
+import Domain.Guess as Guess exposing (Guess)
 import Domain.User as User exposing (User)
 
 
@@ -10,6 +11,7 @@ type Turn
         , guessers : List User
         , secondsLeft : Int
         , guesses : List Guess
+        , currentWord : String
         }
     | EndingATurn
     | ChoosingAWord
@@ -17,14 +19,6 @@ type Turn
         , secondsLeft : Int
         , words : List String
         }
-
-
-type alias Guess =
-    { at : Int
-    , user : User
-    , value : String
-    , correct : Bool
-    }
 
 
 toString : Turn -> String

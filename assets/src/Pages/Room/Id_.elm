@@ -36,6 +36,7 @@ type alias Model =
     { game : Game.Game
     , me : Maybe User
     , nameInput : String
+    , guessInput : String
     }
 
 
@@ -44,6 +45,7 @@ init =
     ( { game = Game.init
       , me = Just (User.init "Dan")
       , nameInput = ""
+      , guessInput = ""
       }
     , Cmd.none
     )
@@ -58,6 +60,8 @@ type Msg
     | ClickedSetName
     | ClickedStart
     | ClickedWordOption String
+    | TypedInGuess String
+    | ClickedGuessSubmit User
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -81,12 +85,19 @@ update msg model =
         TypedInNameField name ->
             ( { model | nameInput = name }, Cmd.none )
 
-        ClickedStart ->
+        TypedInGuess guess ->
+            ( { model | guessInput = guess }, Cmd.none )
+
+        ClickedGuessSubmit me ->
             ( { model
-                | game = Game.start model.game
+                | game = Game.userGuessed me model.guessInput model.game
+                , guessInput = ""
               }
             , Cmd.none
             )
+
+        ClickedStart ->
+            ( { model | game = Game.start model.game }, Cmd.none )
 
 
 
@@ -139,6 +150,7 @@ viewUserJoin model =
         , H.input
             [ HA.placeholder "Name"
             , HE.onInput TypedInNameField
+            , HA.value model.nameInput
             ]
             []
         , H.button
@@ -160,8 +172,12 @@ viewTakingATurn user subModel model =
     else
         viewBase
             [ viewReadonlyDrawing
-            , viewGuessingInput model
-            , viewUserList model
+            , H.div
+                []
+                [ viewUserList model
+                , viewGuessingInput user model
+                , viewAllGuesses user model
+                ]
             ]
             model
 
@@ -182,9 +198,96 @@ viewChoosingAWord user subModel model =
             model
 
 
-viewGuessingInput model =
-    H.div []
-        [ H.input [] [] ]
+viewAllGuesses me model =
+    let
+        guesses =
+            Game.guesses me model.game
+
+        viewSingleGuess guess =
+            H.li []
+                [ H.span [ css [ font_bold ] ]
+                    [ H.text guess.user.id
+                    ]
+                , H.text ": "
+                , H.span []
+                    [ H.text guess.value
+                    ]
+                ]
+    in
+    H.div
+        [ css
+            [ rounded
+            , w_full
+            , m_4
+            , border
+            , h_80
+            , overflow_y_scroll
+            ]
+        ]
+        [ H.div
+            [ css
+                [ bg_gray_100
+                , p_2
+                ]
+            ]
+            [ H.text "All Guesses" ]
+        , H.div
+            [ css
+                [ p_2
+                ]
+            ]
+            [ if List.length guesses > 0 then
+                H.ul [] <| List.map viewSingleGuess guesses
+
+              else
+                H.text "No guesses yet"
+            ]
+        ]
+
+
+viewGuessingInput me model =
+    H.div
+        [ css
+            [ bg_gray_100
+            , rounded
+            , p_2
+            , w_full
+            , m_4
+            ]
+        ]
+        [ H.div [] [ H.text "Guess a word!" ]
+        , H.form [ HE.onSubmit (ClickedGuessSubmit me) ]
+            [ H.input
+                [ HA.placeholder "Guess"
+                , css
+                    [ border
+                    , border_gray_300
+                    , px_2
+                    , py_1
+                    , rounded
+                    , my_2
+                    ]
+                , HE.onInput TypedInGuess
+                , HA.value model.guessInput
+                ]
+                []
+            , H.input
+                [ HA.type_ "submit"
+                , HA.value "Submit"
+                , css
+                    [ bg_white
+                    , rounded
+                    , border
+                    , bg_purple_100
+                    , border_gray_300
+                    , px_2
+                    , mx_1
+                    , py_1
+                    ]
+                ]
+                []
+            ]
+        ]
 
 
 viewWordSelection { words } =
@@ -272,8 +375,11 @@ viewUserList model =
     in
     H.div
         [ css
-            [ p_8
-            , w_40
+            [ p_2
+            , bg_gray_100
+            , m_4
+            , w_full
+            , rounded
             ]
         ]
     <|

@@ -2,6 +2,7 @@ module Domain.Game exposing (..)
 
 import Array exposing (Array)
 import Dict exposing (Dict)
+import Domain.Guess as Guess exposing (Guess)
 import Domain.Turn as Turn exposing (..)
 import Domain.User as User exposing (User)
 import Set exposing (Set)
@@ -32,8 +33,10 @@ init =
         [ "Dan", "Brittany", "Adelynn", "Paul", "Viola", "Poppy" ]
             |> List.map User.init
             |> Array.fromList
-    , activeUser = 0
+    , activeUser = 1
     }
+        |> start
+        |> wordChosen "one"
 
 
 users : Game -> List User
@@ -71,8 +74,37 @@ wordChosen word game =
                         , secondsLeft = 180
                         , guessers = game.users |> Array.toList |> List.filter (\u -> u.id == artist.id)
                         , guesses = []
+                        , currentWord = word
                         }
             }
+
+        _ ->
+            Debug.todo ""
+
+
+userGuessed : User -> String -> Game -> Game
+userGuessed me guess game =
+    case game.turn of
+        Turn.TakingATurn subModel ->
+            { game
+                | turn =
+                    Turn.TakingATurn
+                        { subModel
+                            | guesses =
+                                Guess 0 me guess (guess == subModel.currentWord)
+                                    :: subModel.guesses
+                        }
+            }
+
+        _ ->
+            Debug.todo ""
+
+
+guesses : User -> Game -> List Guess
+guesses me game =
+    case game.turn of
+        Turn.TakingATurn subModel ->
+            subModel.guesses
 
         _ ->
             Debug.todo ""
