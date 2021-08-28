@@ -1,4 +1,4 @@
-module Pages.Draw exposing (Model, Msg, page)
+module Board exposing (..)
 
 import Array exposing (Array)
 import Browser
@@ -23,17 +23,6 @@ import Shared
 import Tailwind.Breakpoints as TB
 import Tailwind.Utilities as TW
 import Time exposing (Posix)
-import View exposing (View)
-
-
-page : Shared.Model -> Request.With Params -> Page.With Model Msg
-page shared req =
-    Page.element
-        { init = init
-        , update = update
-        , view = view
-        , subscriptions = subscriptions
-        }
 
 
 subscriptions : Model -> Sub Msg
@@ -205,7 +194,7 @@ getShadowColor color =
     Color.rgba red green blue 0.2
 
 
-view : Model -> View Msg
+view : Model -> Html Msg
 view { color, size, toDraw } =
     { title = "Draw"
     , body =

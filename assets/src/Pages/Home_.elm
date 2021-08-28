@@ -2,7 +2,6 @@ module Pages.Home_ exposing (view)
 
 import Css
 import Css.Global
-import Drawing
 import Html.Styled as Html exposing (..)
 import Html.Styled.Attributes as HA exposing (css)
 import Tailwind.Breakpoints as TB
@@ -20,7 +19,7 @@ view =
                     [ TW.bg_green_500
                     ]
                 ]
-                [ text "Hello, world!"
+                [ text "Welcome to draw with friends! Let's create a board"
                 ]
         ]
     }
