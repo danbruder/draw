@@ -63,52 +63,62 @@ init =
 type Msg
     = TypedInNameField String
     | ClickedSetName
-    | ClickedStart
-    | ClickedWordOption String
-    | TypedInGuess String
-    | ClickedGuessSubmit User
-    | GotMessage JD.Value
+      -- | ClickedStart
+      -- | ClickedWordOption String
+      -- | TypedInGuess String
+      -- | ClickedGuessSubmit User
+    | GotMessage ServerMsg
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        ClickedWordOption word ->
-            ( { model
-                | game = Game.wordChosen word model.game
-              }
-            , Cmd.none
-            )
-
         ClickedSetName ->
             ( { model
                 | nameInput = ""
                 , me = Just (User.init model.nameInput)
               }
-            , Cmd.none
+            , Net.tx (JE.int 1)
             )
 
         TypedInNameField name ->
             ( { model | nameInput = name }, Cmd.none )
 
-        TypedInGuess guess ->
-            ( { model | guessInput = guess }, Cmd.none )
+        -- ClickedWordOption word ->
+        --     ( { model
+        --         | game = Game.wordChosen word model.game
+        --       }
+        --     , Cmd.none
+        --     )
+        -- TypedInGuess guess ->
+        --     ( { model | guessInput = guess }, Cmd.none )
+        -- ClickedGuessSubmit me ->
+        --     ( { model
+        --         | game = Game.userGuessed me model.guessInput model.game
+        --         , guessInput = ""
+        --       }
+        --     , Cmd.none
+        --     )
+        -- ClickedStart ->
+        --     ( { model | game = Game.start model.game }
+        --     , Net.tx (JE.int 1)
+        --     )
+        GotMessage serverMsg ->
+            ( model, Cmd.none )
 
-        ClickedGuessSubmit me ->
-            ( { model
-                | game = Game.userGuessed me model.guessInput model.game
-                , guessInput = ""
-              }
-            , Cmd.none
-            )
 
-        ClickedStart ->
-            ( { model | game = Game.start model.game }
-            , Net.tx (JE.int 1)
-            )
+type ServerMsg
+    = JoinPayload
+        { me : String
+        , room : Room
+        }
+    | Invalid
 
-        GotMessage val ->
-            ( { model | messages = val :: model.messages }, Cmd.none )
+
+type alias Room =
+    { users : List String
+    , magicNumber : Int
+    }
 
 
 
@@ -117,7 +127,41 @@ update msg model =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Net.rx GotMessage
+    let
+        roomDecoder =
+            JD.map2 Room
+                (JD.field "users" (JD.list JD.string))
+                (JD.field "magic_number" JD.int)
+
+        joinPayloadDecoder : JD.Decoder ServerMsg
+        joinPayloadDecoder =
+            JD.map2 (\me room -> JoinPayload { me = me, room = room })
+                (JD.field "me" JD.string)
+                (JD.field "room" roomDecoder)
+
+        msgFromType : String -> JD.Decoder ServerMsg
+        msgFromType ty =
+            case ty of
+                "JoinPayload" ->
+                    joinPayloadDecoder
+
+                _ ->
+                    JD.fail "Unknown server message"
+
+        msgDecoder : JD.Decoder ServerMsg
+        msgDecoder =
+            JD.field "type" JD.string
+                |> JD.andThen msgFromType
+
+        doDecode val =
+            case JD.decodeValue msgDecoder val of
+                Ok msg ->
+                    msg
+
+                Err _ ->
+                    Invalid
+    in
+    Net.rx (doDecode >> GotMessage)
 
 
 
@@ -141,12 +185,10 @@ view model =
                             Turn.WaitingForUsersToJoin ->
                                 viewWaitingForOthersToJoin me model
 
-                            Turn.ChoosingAWord subModel ->
-                                viewChoosingAWord me subModel model
-
-                            Turn.TakingATurn subModel ->
-                                viewTakingATurn me subModel model
-
+                            -- Turn.ChoosingAWord subModel ->
+                            --     viewChoosingAWord me subModel model
+                            -- Turn.TakingATurn subModel ->
+                            --     viewTakingATurn me subModel model
                             _ ->
                                 Debug.todo ""
                 ]
@@ -172,147 +214,136 @@ viewUserJoin model =
         ]
 
 
-viewTakingATurn user subModel model =
-    if Turn.userIsActive user model.game.turn then
-        viewBase
-            [ viewDrawing
-            , viewUserList model
-            ]
-            model
 
-    else
-        viewBase
-            [ viewReadonlyDrawing
-            , H.div
-                []
-                [ viewUserList model
-                , viewGuessingInput user model
-                , viewAllGuesses user model
-                ]
-            ]
-            model
-
-
-viewChoosingAWord user subModel model =
-    if Turn.userIsActive user model.game.turn then
-        viewBase
-            [ viewWordSelection subModel
-            , viewUserList model
-            ]
-            model
-
-    else
-        viewBase
-            [ viewDrawing
-            , viewUserList model
-            ]
-            model
-
-
-viewAllGuesses me model =
-    let
-        guesses =
-            Game.guesses me model.game
-
-        viewSingleGuess guess =
-            H.li []
-                [ H.span [ css [ font_bold ] ]
-                    [ H.text guess.user.id
-                    ]
-                , H.text ": "
-                , H.span []
-                    [ H.text guess.value
-                    ]
-                ]
-    in
-    H.div
-        [ css
-            [ rounded
-            , w_full
-            , m_4
-            , border
-            , h_80
-            , overflow_y_scroll
-            ]
-        ]
-        [ H.div
-            [ css
-                [ bg_gray_100
-                , p_2
-                ]
-            ]
-            [ H.text "All Guesses" ]
-        , H.div
-            [ css
-                [ p_2
-                ]
-            ]
-            [ if List.length guesses > 0 then
-                H.ul [] <| List.map viewSingleGuess guesses
-
-              else
-                H.text "No guesses yet"
-            ]
-        ]
-
-
-viewGuessingInput me model =
-    H.div
-        [ css
-            [ bg_gray_100
-            , rounded
-            , p_2
-            , w_full
-            , m_4
-            ]
-        ]
-        [ H.div [] [ H.text "Guess a word!" ]
-        , H.form [ HE.onSubmit (ClickedGuessSubmit me) ]
-            [ H.input
-                [ HA.placeholder "Guess"
-                , css
-                    [ border
-                    , border_gray_300
-                    , px_2
-                    , py_1
-                    , rounded
-                    , my_2
-                    ]
-                , HE.onInput TypedInGuess
-                , HA.value model.guessInput
-                ]
-                []
-            , H.input
-                [ HA.type_ "submit"
-                , HA.value "Submit"
-                , css
-                    [ bg_white
-                    , rounded
-                    , border
-                    , bg_purple_100
-                    , border_gray_300
-                    , px_2
-                    , mx_1
-                    , py_1
-                    ]
-                ]
-                []
-            ]
-        ]
-
-
-viewWordSelection { words } =
-    let
-        viewWordOption word =
-            H.li
-                [ HE.onClick (ClickedWordOption word)
-                ]
-                [ H.text word ]
-    in
-    H.div []
-        [ H.text "Choose a word :)"
-        , H.ul [] <| List.map viewWordOption words
-        ]
+-- viewTakingATurn user subModel model =
+--     if Turn.userIsActive user model.game.turn then
+--         viewBase
+--             [ viewDrawing
+--             , viewUserList model
+--             ]
+--             model
+--     else
+--         viewBase
+--             [ viewReadonlyDrawing
+--             , H.div
+--                 []
+--                 [ viewUserList model
+--                 , viewGuessingInput user model
+--                 , viewAllGuesses user model
+--                 ]
+--             ]
+--             model
+-- viewChoosingAWord user subModel model =
+--     if Turn.userIsActive user model.game.turn then
+--         viewBase
+--             [ viewWordSelection subModel
+--             , viewUserList model
+--             ]
+--             model
+--     else
+--         viewBase
+--             [ viewDrawing
+--             , viewUserList model
+--             ]
+--             model
+-- viewAllGuesses me model =
+--     let
+--         guesses =
+--             Game.guesses me model.game
+--         viewSingleGuess guess =
+--             H.li []
+--                 [ H.span [ css [ font_bold ] ]
+--                     [ H.text guess.user.id
+--                     ]
+--                 , H.text ": "
+--                 , H.span []
+--                     [ H.text guess.value
+--                     ]
+--                 ]
+--     in
+--     H.div
+--         [ css
+--             [ rounded
+--             , w_full
+--             , m_4
+--             , border
+--             , h_80
+--             , overflow_y_scroll
+--             ]
+--         ]
+--         [ H.div
+--             [ css
+--                 [ bg_gray_100
+--                 , p_2
+--                 ]
+--             ]
+--             [ H.text "All Guesses" ]
+--         , H.div
+--             [ css
+--                 [ p_2
+--                 ]
+--             ]
+--             [ if List.length guesses > 0 then
+--                 H.ul [] <| List.map viewSingleGuess guesses
+--       else
+--         H.text "No guesses yet"
+--     ]
+-- ]
+-- viewGuessingInput me model =
+--     H.div
+--         [ css
+--             [ bg_gray_100
+--             , rounded
+--             , p_2
+--             , w_full
+--             , m_4
+--             ]
+--         ]
+--         [ H.div [] [ H.text "Guess a word!" ]
+--         , H.form [ HE.onSubmit (ClickedGuessSubmit me) ]
+--             [ H.input
+--                 [ HA.placeholder "Guess"
+--                 , css
+--                     [ border
+--                     , border_gray_300
+--                     , px_2
+--                     , py_1
+--                     , rounded
+--                     , my_2
+--                     ]
+--                 , HE.onInput TypedInGuess
+--                 , HA.value model.guessInput
+--                 ]
+--                 []
+--             , H.input
+--                 [ HA.type_ "submit"
+--                 , HA.value "Submit"
+--                 , css
+--                     [ bg_white
+--                     , rounded
+--                     , border
+--                     , bg_purple_100
+--                     , border_gray_300
+--                     , px_2
+--                     , mx_1
+--                     , py_1
+--                     ]
+--                 ]
+--                 []
+--             ]
+--         ]
+-- viewWordSelection { words } =
+--     let
+--         viewWordOption word =
+--             H.li
+--                 [ HE.onClick (ClickedWordOption word)
+--                 ]
+--                 [ H.text word ]
+--     in
+--     H.div []
+--         [ H.text "Choose a word :)"
+--         , H.ul [] <| List.map viewWordOption words
+--         ]
 
 
 viewBase content model =
@@ -325,7 +356,8 @@ viewBase content model =
                 ]
             ]
             content
-        , viewControls model
+
+        -- , viewControls model
         ]
 
 
@@ -397,21 +429,21 @@ viewUserList model =
         List.map viewUser (Game.users model.game)
 
 
-viewControls model =
-    H.div
-        []
-        [ case model.game.turn of
-            Turn.WaitingForUsersToJoin ->
-                H.button
-                    [ css [ bg_purple_200, text_red_500, font_bold, border, p_4, rounded, border_purple_300, shadow ]
-                    , HE.onClick ClickedStart
-                    ]
-                    [ H.text "Start" ]
 
-            _ ->
-                H.text ""
-        , H.div [] [ H.text "Game State:" ]
-        , H.div []
-            [ model.game.turn |> Turn.toString |> H.text
-            ]
-        ]
+-- viewControls model =
+--     H.div
+--         []
+--         [ case model.game.turn of
+--             Turn.WaitingForUsersToJoin ->
+--                 H.button
+--                     [ css [ bg_purple_200, text_red_500, font_bold, border, p_4, rounded, border_purple_300, shadow ]
+--                     , HE.onClick ClickedStart
+--                     ]
+--                     [ H.text "Start" ]
+--             _ ->
+--                 H.text ""
+--         , H.div [] [ H.text "Game State:" ]
+--         , H.div []
+--             [ model.game.turn |> Turn.toString |> H.text
+--             ]
+--         ]

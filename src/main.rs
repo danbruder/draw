@@ -72,12 +72,12 @@ impl Handler<RoomUpdate> for Room {
     async fn handle(&mut self, msg: RoomUpdate, _ctx: &mut Context<Self>) {
         let effect = self.room.update(msg.0, msg.1);
         match effect {
-            room::Effect::SendRoomState(id, state) => {
+            Some((id, payload)) => {
                 if let Some(tx) = self.users.get(&id) {
-                    tx.send(serde_json::to_string(&state).unwrap()).unwrap();
+                    tx.send(serde_json::to_string(&payload).unwrap()).unwrap();
                 }
             }
-            room::Effect::Nothing => {}
+            None => {}
         }
     }
 }
@@ -107,7 +107,7 @@ impl Message for Join {
 impl Handler<Join> for Room {
     async fn handle(&mut self, msg: Join, ctx: &mut Context<Self>) {
         self.users.insert(msg.0, msg.1);
-        ctx.notify(RoomUpdate(msg.0, Msg::GotJoin(msg.0)));
+        ctx.notify(RoomUpdate(msg.0, Msg::GotJoin));
     }
 }
 
@@ -120,7 +120,7 @@ impl Message for Leave {
 impl Handler<Leave> for Room {
     async fn handle(&mut self, msg: Leave, ctx: &mut Context<Self>) {
         self.users.remove(&msg.0);
-        ctx.notify(RoomUpdate(msg.0, Msg::GotLeave(msg.0)));
+        ctx.notify(RoomUpdate(msg.0, Msg::GotLeave));
     }
 }
 

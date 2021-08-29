@@ -16,15 +16,23 @@ impl Room {
         }
     }
 
-    pub fn update(&mut self, user: Uuid, msg: Msg) -> Effect {
+    pub fn update(&mut self, user: Uuid, msg: Msg) -> Option<(Uuid, Effect)> {
         match msg {
-            Msg::GotJoin(id) => {
-                self.users.insert(id);
-                Effect::SendRoomState(user, self.clone())
+            Msg::GotJoin => {
+                self.users.insert(user);
+
+                Some((
+                    user,
+                    Effect::JoinPayload {
+                        room: self.clone(),
+                        me: user,
+                    },
+                ))
             }
-            Msg::GotLeave(id) => {
-                self.users.remove(&id);
-                Effect::Nothing
+            Msg::GotLeave => {
+                self.users.remove(&user);
+
+                None
             }
         }
     }
@@ -32,12 +40,12 @@ impl Room {
 
 #[derive(Deserialize)]
 pub enum Msg {
-    GotJoin(Uuid),
-    GotLeave(Uuid),
+    GotJoin,
+    GotLeave,
 }
 
 #[derive(Serialize)]
+#[serde(tag = "type")]
 pub enum Effect {
-    SendRoomState(Uuid, Room),
-    Nothing,
+    JoinPayload { room: Room, me: Uuid },
 }

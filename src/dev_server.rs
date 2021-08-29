@@ -5,7 +5,7 @@ use std::time::Duration;
 
 pub fn watch() {
     let (tx, rx) = channel();
-    let mut watcher = watcher(tx, Duration::from_secs(1)).unwrap();
+    let mut watcher = watcher(tx, Duration::from_secs(10)).unwrap();
     watcher
         .watch("assets/src", RecursiveMode::Recursive)
         .unwrap();
