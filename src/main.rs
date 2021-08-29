@@ -1,5 +1,6 @@
 use futures::{SinkExt, StreamExt, TryFutureExt};
 use std::collections::HashMap;
+use std::thread;
 use tokio::sync::mpsc::{self, UnboundedSender};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 use uuid::Uuid;
@@ -8,8 +9,35 @@ use warp::Filter;
 use xtra::prelude::*;
 use xtra::spawn::Tokio;
 
+mod dev_server;
 mod room;
 use room::Msg;
+
+// Main
+#[tokio::main]
+async fn main() {
+    pretty_env_logger::init();
+
+    thread::spawn(|| {
+        dev_server::watch();
+    });
+
+    let room = Room::new().create(None).spawn(&mut Tokio::Global);
+    let room = warp::any().map(move || room.clone());
+
+    let chat = warp::path("ws")
+        .and(warp::ws())
+        .and(room)
+        .map(|ws: warp::ws::Ws, room| ws.on_upgrade(move |socket| user_connected(socket, room)));
+
+    let index = warp::any().and(warp::fs::file("assets/public/index.html"));
+    let dist = warp::path("dist").and(warp::fs::dir("assets/public/dist"));
+
+    let routes = dist.or(chat).or(index);
+
+    println!("Listening on 3030");
+    warp::serve(routes).run(([127, 0, 0, 1], 3030)).await;
+}
 
 // Room
 struct Room {
@@ -94,28 +122,6 @@ impl Handler<Leave> for Room {
         self.users.remove(&msg.0);
         ctx.notify(RoomUpdate(msg.0, Msg::GotLeave(msg.0)));
     }
-}
-
-// Main
-#[tokio::main]
-async fn main() {
-    pretty_env_logger::init();
-
-    let room = Room::new().create(None).spawn(&mut Tokio::Global);
-    let room = warp::any().map(move || room.clone());
-
-    let chat = warp::path("ws")
-        .and(warp::ws())
-        .and(room)
-        .map(|ws: warp::ws::Ws, room| ws.on_upgrade(move |socket| user_connected(socket, room)));
-
-    let index = warp::any().and(warp::fs::file("assets/public/index.html"));
-    let dist = warp::path("dist").and(warp::fs::dir("assets/public/dist"));
-
-    let routes = dist.or(chat).or(index);
-
-    println!("Listening on 3030");
-    warp::serve(routes).run(([127, 0, 0, 1], 3030)).await;
 }
 
 async fn user_connected(ws: WebSocket, room: xtra::Address<Room>) {
