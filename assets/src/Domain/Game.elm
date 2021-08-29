@@ -35,8 +35,11 @@ init =
             |> Array.fromList
     , activeUser = 1
     }
-        |> start
-        |> wordChosen "one"
+
+
+
+-- |> start
+-- |> wordChosen "one"
 
 
 users : Game -> List User

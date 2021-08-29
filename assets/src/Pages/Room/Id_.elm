@@ -10,6 +10,9 @@ import Gen.Params.Room.Id_ exposing (Params)
 import Html.Styled as H
 import Html.Styled.Attributes as HA exposing (css)
 import Html.Styled.Events as HE
+import Json.Decode as JD
+import Json.Encode as JE
+import Net
 import Page
 import Request
 import Shared
@@ -37,15 +40,17 @@ type alias Model =
     , me : Maybe User
     , nameInput : String
     , guessInput : String
+    , messages : List JD.Value
     }
 
 
 init : ( Model, Cmd Msg )
 init =
     ( { game = Game.init
-      , me = Just (User.init "Dan")
+      , me = Nothing
       , nameInput = ""
       , guessInput = ""
+      , messages = []
       }
     , Cmd.none
     )
@@ -62,6 +67,7 @@ type Msg
     | ClickedWordOption String
     | TypedInGuess String
     | ClickedGuessSubmit User
+    | GotMessage JD.Value
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -97,7 +103,12 @@ update msg model =
             )
 
         ClickedStart ->
-            ( { model | game = Game.start model.game }, Cmd.none )
+            ( { model | game = Game.start model.game }
+            , Net.tx (JE.int 1)
+            )
+
+        GotMessage val ->
+            ( { model | messages = val :: model.messages }, Cmd.none )
 
 
 
@@ -106,7 +117,7 @@ update msg model =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Sub.none
+    Net.rx GotMessage
 
 
 

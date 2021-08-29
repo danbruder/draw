@@ -1,0 +1,13 @@
+{
+  "name": "assets",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "dependencies": {
+    "elm": "^0.19.1-5",
+    "elm-spa": "^6.0.4"
+  },
+  "scripts": {
+    "build": "elm make .elm-spa/defaults/Main.elm --output=public/dist/elm.js --debug"
+  }
+}

@@ -109,10 +109,12 @@ async fn main() {
         .and(room)
         .map(|ws: warp::ws::Ws, room| ws.on_upgrade(move |socket| user_connected(socket, room)));
 
-    let index = warp::path::end().map(|| warp::reply::html(INDEX_HTML));
+    let index = warp::any().and(warp::fs::file("assets/public/index.html"));
+    let dist = warp::path("dist").and(warp::fs::dir("assets/public/dist"));
 
-    let routes = index.or(chat);
+    let routes = dist.or(chat).or(index);
 
+    println!("Listening on 3030");
     warp::serve(routes).run(([127, 0, 0, 1], 3030)).await;
 }
 
@@ -160,45 +162,3 @@ async fn user_connected(ws: WebSocket, room: xtra::Address<Room>) {
         .await
         .expect("Could not leave the room");
 }
-
-static INDEX_HTML: &str = r#"<!DOCTYPE html>
-<html lang="en">
-    <head>
-        <title>Warp Chat</title>
-    </head>
-    <body>
-        <h1>Warp chat</h1>
-        <div id="chat">
-            <p><em>Connecting...</em></p>
-        </div>
-        <input type="text" id="text" />
-        <button type="button" id="send">Send</button>
-        <script type="text/javascript">
-        const chat = document.getElementById('chat');
-        const text = document.getElementById('text');
-        const uri = 'ws://' + location.host + '/ws';
-        const ws = new WebSocket(uri);
-        function message(data) {
-            const line = document.createElement('p');
-            line.innerText = data;
-            chat.appendChild(line);
-        }
-        ws.onopen = function() {
-            chat.innerHTML = '<p><em>Connected!</em></p>';
-        };
-        ws.onmessage = function(msg) {
-            message(msg.data);
-        };
-        ws.onclose = function() {
-            chat.getElementsByTagName('em')[0].innerText = 'Disconnected!';
-        };
-        send.onclick = function() {
-            const msg = text.value;
-            ws.send(msg);
-            text.value = '';
-            message('<You>: ' + msg);
-        };
-        </script>
-    </body>
-</html>
-"#;
