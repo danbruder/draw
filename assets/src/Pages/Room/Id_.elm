@@ -2,7 +2,7 @@ module Pages.Room.Id_ exposing (Model, Msg, page)
 
 import Css
 import Css.Global
-import Dict
+import Dict exposing (Dict)
 import Domain.Game as Game
 import Domain.Turn as Turn
 import Domain.User as User exposing (User)
@@ -36,21 +36,20 @@ page shared req =
 
 
 type alias Model =
-    { game : Game.Game
-    , me : Maybe User
+    { me : Maybe String
     , nameInput : String
-    , guessInput : String
-    , messages : List JD.Value
+    , room : Room
     }
 
 
 init : ( Model, Cmd Msg )
 init =
-    ( { game = Game.init
-      , me = Nothing
+    ( { me = Nothing
       , nameInput = ""
-      , guessInput = ""
-      , messages = []
+      , room =
+            { users = Dict.empty
+            , magicNumber = 1
+            }
       }
     , Cmd.none
     )
@@ -67,18 +66,24 @@ type Msg
       -- | ClickedWordOption String
       -- | TypedInGuess String
       -- | ClickedGuessSubmit User
-    | GotMessage ServerMsg
+    | GotMessage ServerMsgIn
+
+
+send =
+    encodeServerMsgOut >> Net.tx
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         ClickedSetName ->
-            ( { model
-                | nameInput = ""
-                , me = Just (User.init model.nameInput)
-              }
-            , Net.tx (JE.int 1)
+            ( { model | nameInput = "" }
+            , send
+                (SetName
+                    { id = model.me |> Maybe.withDefault ""
+                    , name = model.nameInput
+                    }
+                )
             )
 
         TypedInNameField name ->
@@ -104,10 +109,15 @@ update msg model =
         --     , Net.tx (JE.int 1)
         --     )
         GotMessage serverMsg ->
-            ( model, Cmd.none )
+            case serverMsg of
+                JoinPayload { me, room } ->
+                    ( { model | me = Just me }, Cmd.none )
+
+                _ ->
+                    ( model, Cmd.none )
 
 
-type ServerMsg
+type ServerMsgIn
     = JoinPayload
         { me : String
         , room : Room
@@ -115,10 +125,27 @@ type ServerMsg
     | Invalid
 
 
+type ServerMsgOut
+    = SetName
+        { id : String
+        , name : String
+        }
+
+
 type alias Room =
-    { users : List String
+    { users : Dict String String
     , magicNumber : Int
     }
+
+
+encodeServerMsgOut out =
+    case out of
+        SetName { id, name } ->
+            JE.object
+                [ ( "id", JE.string id )
+                , ( "name", JE.string name )
+                , ( "type", JE.string "SetName" )
+                ]
 
 
 
@@ -130,16 +157,16 @@ subscriptions model =
     let
         roomDecoder =
             JD.map2 Room
-                (JD.field "users" (JD.list JD.string))
+                (JD.field "users" (JD.dict JD.string))
                 (JD.field "magic_number" JD.int)
 
-        joinPayloadDecoder : JD.Decoder ServerMsg
+        joinPayloadDecoder : JD.Decoder ServerMsgIn
         joinPayloadDecoder =
             JD.map2 (\me room -> JoinPayload { me = me, room = room })
                 (JD.field "me" JD.string)
                 (JD.field "room" roomDecoder)
 
-        msgFromType : String -> JD.Decoder ServerMsg
+        msgFromType : String -> JD.Decoder ServerMsgIn
         msgFromType ty =
             case ty of
                 "JoinPayload" ->
@@ -148,7 +175,7 @@ subscriptions model =
                 _ ->
                     JD.fail "Unknown server message"
 
-        msgDecoder : JD.Decoder ServerMsg
+        msgDecoder : JD.Decoder ServerMsgIn
         msgDecoder =
             JD.field "type" JD.string
                 |> JD.andThen msgFromType
@@ -176,26 +203,13 @@ view model =
           H.toUnstyled <|
             H.div []
                 [ Css.Global.global globalStyles
-                , case model.me of
-                    Nothing ->
-                        viewUserJoin model
-
-                    Just me ->
-                        case model.game.turn of
-                            Turn.WaitingForUsersToJoin ->
-                                viewWaitingForOthersToJoin me model
-
-                            -- Turn.ChoosingAWord subModel ->
-                            --     viewChoosingAWord me subModel model
-                            -- Turn.TakingATurn subModel ->
-                            --     viewTakingATurn me subModel model
-                            _ ->
-                                Debug.todo ""
+                , viewUserJoin model
                 ]
         ]
     }
 
 
+viewUserJoin : Model -> H.Html Msg
 viewUserJoin model =
     H.div []
         [ H.h1 [] [ H.text "Welcome!" ]
@@ -210,6 +224,9 @@ viewUserJoin model =
             [ HE.onClick ClickedSetName
             ]
             [ H.text "Let's go!"
+            ]
+        , H.div []
+            [ H.ul [] <| List.map (\i -> H.text i) (Dict.values model.room.users)
             ]
         ]
 
@@ -364,7 +381,6 @@ viewBase content model =
 viewWaitingForOthersToJoin user model =
     viewBase
         [ viewDrawing
-        , viewUserList model
         ]
         model
 

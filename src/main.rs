@@ -72,9 +72,11 @@ impl Handler<RoomUpdate> for Room {
     async fn handle(&mut self, msg: RoomUpdate, _ctx: &mut Context<Self>) {
         let effect = self.room.update(msg.0, msg.1);
         match effect {
-            Some((id, payload)) => {
-                if let Some(tx) = self.users.get(&id) {
-                    tx.send(serde_json::to_string(&payload).unwrap()).unwrap();
+            Some((ids, payload)) => {
+                for id in ids {
+                    if let Some(tx) = self.users.get(&id) {
+                        tx.send(serde_json::to_string(&payload).unwrap()).unwrap();
+                    }
                 }
             }
             None => {}
