@@ -1,5 +1,6 @@
 module Pages.Room.Id_ exposing (Model, Msg, page)
 
+import Board
 import Css
 import Css.Global
 import Dict exposing (Dict)
@@ -40,16 +41,23 @@ type alias Model =
     { me : Maybe String
     , nameInput : String
     , room : Room
+    , board : Board.Model
     }
 
 
 init : ( Model, Cmd Msg )
 init =
+    let
+        ( boardModel, boardCmd ) =
+            Board.init
+    in
     ( { me = Nothing
       , nameInput = ""
       , room = Room.init
+      , board = boardModel
       }
-    , Cmd.none
+    , boardCmd
+        |> Cmd.map BoardMsg
     )
 
 
@@ -62,6 +70,7 @@ type Msg
     | ClickedSetName
     | ClickedWord String
     | GotMessage (Result String ServerMsgIn)
+    | BoardMsg Board.Msg
 
 
 send =
@@ -101,6 +110,13 @@ update msg model =
 
                 _ ->
                     ( model, Cmd.none )
+
+        BoardMsg boardMsg ->
+            let
+                ( boardModel, boardCmd ) =
+                    Board.update boardMsg model.board
+            in
+            ( { model | board = boardModel }, boardCmd |> Cmd.map BoardMsg )
 
 
 type alias ServerMsgIn =
@@ -161,7 +177,10 @@ subscriptions model =
                         "Invalid"
                     )
     in
-    Net.rx (doDecode >> GotMessage)
+    Sub.batch
+        [ Board.subscriptions model.board |> Sub.map BoardMsg
+        , Net.rx (doDecode >> GotMessage)
+        ]
 
 
 
@@ -180,7 +199,7 @@ view model =
                         viewUserJoin model
 
                     SelectingWord { artist } ->
-                        if Just (Debug.log "artist" artist) == Debug.log "me" model.me then
+                        if Just artist == model.me then
                             viewSelectAWord model
 
                         else
@@ -234,13 +253,6 @@ viewSomeoneElseIsSelectingAWord model =
         ]
 
 
-viewDrawing : DrawingModel -> Model -> H.Html Msg
-viewDrawing drawing model =
-    H.div []
-        [ H.h1 [] [ H.text "Drawing time" ]
-        ]
-
-
 sampleWords =
     [ "House"
     , "Garden"
@@ -266,3 +278,11 @@ viewHeader =
             ]
         ]
         [ H.text "Room 123" ]
+
+
+viewDrawing : DrawingModel -> Model -> H.Html Msg
+viewDrawing drawing model =
+    H.div []
+        [ H.h1 [] [ H.text "Drawing time" ]
+        , Board.view model.board |> H.fromUnstyled |> H.map BoardMsg
+        ]

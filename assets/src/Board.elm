@@ -8,7 +8,6 @@ import Canvas.Settings exposing (..)
 import Canvas.Settings.Advanced exposing (..)
 import Canvas.Settings.Line exposing (..)
 import Color exposing (Color)
-import Drawing
 import Gen.Params.Draw exposing (Params)
 import Html as Html exposing (..)
 import Html.Attributes as HA exposing (style)
@@ -196,36 +195,32 @@ getShadowColor color =
 
 view : Model -> Html Msg
 view { color, size, toDraw } =
-    { title = "Draw"
-    , body =
-        [ div []
-            [ p [ style "text-align" "center", style "font-size" "80%" ]
-                [ Html.text "Draw something! (mouse or touch)"
-                ]
-            , Canvas.toHtml ( w, h )
-                [ style "touch-action" "none"
-                , Mouse.onDown (.offsetPos >> StartAt)
-                , Mouse.onMove (.offsetPos >> MoveAt)
-                , Mouse.onUp (.offsetPos >> EndAt)
+    div []
+        [ p [ style "text-align" "center", style "font-size" "80%" ]
+            [ Html.text "Draw something! (mouse or touch)"
+            ]
+        , Canvas.toHtml ( w, h )
+            [ style "touch-action" "none"
+            , Mouse.onDown (.offsetPos >> StartAt)
+            , Mouse.onMove (.offsetPos >> MoveAt)
+            , Mouse.onUp (.offsetPos >> EndAt)
 
-                -- These 2 get annoying sometimes when painting
-                -- , Mouse.onLeave (.offsetPos >> EndAt)
-                -- , Mouse.onContextMenu (.offsetPos >> EndAt)
-                , onTouch "touchstart" (touchCoordinates >> StartAt)
-                , onTouch "touchmove" (touchCoordinates >> MoveAt)
-                , onTouch "touchend" (touchCoordinates >> EndAt)
-                ]
-                toDraw
-            , div
-                [ style "max-width" (String.fromInt (w - 20) ++ "px")
-                , style "padding" "10px"
-                ]
-                [ sizeControls color size
-                , colorButtons color
-                ]
+            -- These 2 get annoying sometimes when painting
+            -- , Mouse.onLeave (.offsetPos >> EndAt)
+            -- , Mouse.onContextMenu (.offsetPos >> EndAt)
+            , onTouch "touchstart" (touchCoordinates >> StartAt)
+            , onTouch "touchmove" (touchCoordinates >> MoveAt)
+            , onTouch "touchend" (touchCoordinates >> EndAt)
+            ]
+            toDraw
+        , div
+            [ style "max-width" (String.fromInt (w - 20) ++ "px")
+            , style "padding" "10px"
+            ]
+            [ sizeControls color size
+            , colorButtons color
             ]
         ]
-    }
 
 
 sizeControls selectedColor selectedSize =
