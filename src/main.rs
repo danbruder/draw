@@ -10,7 +10,9 @@ use xtra::prelude::*;
 use xtra::spawn::Tokio;
 
 mod dev_server;
+mod drawing;
 mod room;
+mod word;
 use room::Msg;
 
 // Main
@@ -70,16 +72,9 @@ impl Message for RoomUpdate {
 #[async_trait::async_trait]
 impl Handler<RoomUpdate> for Room {
     async fn handle(&mut self, msg: RoomUpdate, _ctx: &mut Context<Self>) {
-        let effect = self.room.update(msg.0, msg.1);
-        match effect {
-            Some((ids, payload)) => {
-                for id in ids {
-                    if let Some(tx) = self.users.get(&id) {
-                        tx.send(serde_json::to_string(&payload).unwrap()).unwrap();
-                    }
-                }
-            }
-            None => {}
+        self.room.update(msg.0, msg.1);
+        for (user, tx) in self.users.iter() {
+            tx.send(serde_json::to_string(&self.room).unwrap()).unwrap();
         }
     }
 }

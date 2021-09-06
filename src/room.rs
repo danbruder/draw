@@ -1,3 +1,5 @@
+use crate::drawing::DrawingModel;
+use crate::word::Word;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use uuid::Uuid;
@@ -6,23 +8,14 @@ use uuid::Uuid;
 pub struct Room {
     users: HashMap<Uuid, String>,
     machine: Machine,
-    magic_number: i32,
 }
 
 #[derive(Serialize, Clone, Debug)]
 pub enum Machine {
     Joining,
-    SelectingWord {
-        active_user: Uuid,
-    },
-    Drawing {
-        active_user: Uuid,
-        word: String,
-        seconds_left: i32,
-    },
-    EndOfTurn {
-        active_user: Uuid,
-    },
+    SelectingWord { artist: Uuid },
+    Drawing(DrawingModel),
+    EndOfTurn { artist: Uuid },
 }
 
 impl Room {
@@ -30,103 +23,50 @@ impl Room {
         Self {
             users: HashMap::new(),
             machine: Machine::Joining,
-            magic_number: 42,
         }
     }
 
-    fn broadcast(&mut self, effect: Effect) -> Option<(Vec<Uuid>, Effect)> {
-        Some((self.users.keys().cloned().collect(), effect))
-    }
-
-    pub fn update(&mut self, user: Uuid, msg: Msg) -> Option<(Vec<Uuid>, Effect)> {
-        match (msg, &self.machine) {
-            (Msg::GotJoin, _) => {
+    pub fn update(&mut self, user: Uuid, msg: Msg) {
+        match msg {
+            Msg::GotJoin => {
                 self.users.insert(user, "".into());
-
-                Some((
-                    vec![user],
-                    Effect::JoinPayload {
-                        room: self.clone(),
-                        me: user,
-                    },
-                ))
             }
 
-            (Msg::SetName { id, name }, _) => {
+            Msg::SetName { id, name } => {
                 self.users.insert(id, name);
-
-                Some((
-                    vec![user],
-                    Effect::JoinPayload {
-                        room: self.clone(),
-                        me: user,
-                    },
-                ))
             }
-            (Msg::GotLeave, _) => {
+            Msg::GotLeave => {
                 self.users.remove(&user);
-
-                None
             }
             // Playing Flow
-            (Msg::WordSelected { word }, Machine::SelectingWord { active_user }) => {
-                self.machine = Machine::Drawing {
-                    seconds_left: 180,
-                    word: word.clone(),
-                    active_user,
-                };
-
-                self.broadcast(Effect::WordSelected {
-                    letters: word.chars().map(|_| None).collect(),
-                })
+            Msg::WordSelected { word } => {
+                let drawing = DrawingModel::new(&word, &user);
+                self.machine = Machine::Drawing(drawing);
             }
+            // Counting down and moving on to new turn
+            Msg::Tick => match self.machine {
+                Machine::Drawing(ref mut drawing) => {
+                    if drawing.seconds_left > 0 {
+                        drawing.seconds_left -= 1;
 
-            (Msg::WordSelected { word }, Machine::SelectingWord { active_user }) => {
-                self.machine = Machine::Drawing {
-                    seconds_left: 180,
-                    word: word.clone(),
-                    active_user,
-                };
-
-                self.broadcast(Effect::WordSelected {
-                    letters: word.chars().map(|_| None).collect(),
-                })
-            }
-
-            (
-                Msg::Tick,
-                Machine::Drawing {
-                    seconds_left,
-                    word,
-                    active_user,
-                },
-            ) => {
-                if seconds_left > 0 {
-                    let seconds_left = seconds_left - 1;
-                    self.machine = Machine::Drawing {
-                        seconds_left,
-                        word,
-                        active_user,
-                    };
-                    self.broadcast(Effect::SecondsLeft { seconds_left })
-                } else {
-                    self.machine = Machine::EndOfTurn { active_user };
-                    self.broadcast(Effect::TurnEnded { new_scores: false })
+                        if drawing.seconds_left % 10 == 10 {
+                            drawing.word.reveal(1);
+                        }
+                    } else {
+                        if let Some((new_user, _)) = self.users.iter().take(1).next() {
+                            self.machine = Machine::SelectingWord { artist: *new_user };
+                        } else {
+                            panic!("atd");
+                        }
+                    }
                 }
-            }
-            (Msg::Tick, Machine::EndOfTurn { .. }) => {
-                // Select new user, start their turn
-                if let Some((new_user, _)) = self.users.iter().take(1).next() {
-                    self.machine = Machine::SelectingWord {
-                        active_user: *new_user,
-                    };
-                    self.broadcast(Effect::TurnStarted { user: *new_user })
-                } else {
-                    None
-                }
-            }
-            _ => None,
-        }
+                _ => (),
+            },
+            // (Msg::GotCanvasFrames { frames }, Machine::Drawing(mut drawing)) => {
+            //     drawing.frames.extend(frames);
+            // }
+            _ => (),
+        };
     }
 }
 
@@ -140,40 +80,6 @@ pub enum Msg {
     // Playing flow
     WordSelected { word: String },
     GotCanvasFrames { frames: Vec<u8> },
-    GotGuess { guess: String },
     Tick,
-}
-
-#[derive(Serialize)]
-#[serde(tag = "type")]
-pub enum Effect {
-    // Joining Flow
-    JoinPayload {
-        room: Room,
-        me: Uuid,
-    },
-    // Playing flow
-    TurnStarted {
-        user: Uuid,
-    },
-    WordSelected {
-        letters: Vec<Option<char>>,
-    },
-    PublishCanvasFrames {
-        frames: Vec<u8>,
-    },
-    LettersRevealed {
-        letters: Vec<Option<char>>,
-    },
-    GuessResult {
-        correct: bool,
-        user: Uuid,
-        guess: String,
-    },
-    TurnEnded {
-        new_scores: bool,
-    },
-    SecondsLeft {
-        seconds_left: i32,
-    },
+    GotGuess { guess: String },
 }
