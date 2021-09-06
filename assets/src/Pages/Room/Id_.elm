@@ -149,8 +149,7 @@ view : Model -> View Msg
 view model =
     { title = "Room 123"
     , body =
-        [ -- Like this:
-          H.toUnstyled <|
+        [ H.toUnstyled <|
             H.div []
                 [ Css.Global.global globalStyles
                 , viewUserJoin model
@@ -164,43 +163,23 @@ viewUserJoin model =
     H.div []
         [ H.h1 [] [ H.text "Welcome!" ]
         , H.p [] [ H.text "Please enter your name" ]
-        , H.input
-            [ HA.placeholder "Name"
-            , HE.onInput TypedInNameField
-            , HA.value model.nameInput
-            ]
-            []
-        , H.button
-            [ HE.onClick ClickedSetName
-            ]
-            [ H.text "Let's go!"
+        , H.form [ HE.onSubmit ClickedSetName ]
+            [ H.input
+                [ HA.placeholder "Name"
+                , HE.onInput TypedInNameField
+                , HA.value model.nameInput
+                ]
+                []
+            , H.input
+                [ HA.type_ "submit"
+                , HA.value "Let's go!"
+                ]
+                []
             ]
         , H.div []
             [ H.ul [] <| List.map (\i -> H.li [] [ H.text i.name ]) (Dict.values model.room.users)
             ]
         ]
-
-
-viewBase content model =
-    H.div []
-        [ viewHeader
-        , H.div
-            [ css
-                [ flex
-                , justify_between
-                ]
-            ]
-            content
-
-        -- , viewControls model
-        ]
-
-
-viewWaitingForOthersToJoin user model =
-    viewBase
-        [ viewDrawing
-        ]
-        model
 
 
 viewHeader =
@@ -217,29 +196,3 @@ viewHeader =
             ]
         ]
         [ H.text "Room 123" ]
-
-
-viewDrawing =
-    H.div
-        [ css
-            [ w_72
-            , h_72
-            , border
-            , shadow
-            , rounded
-            ]
-        ]
-        [ H.text "Drawing" ]
-
-
-viewReadonlyDrawing =
-    H.div
-        [ css
-            [ w_72
-            , h_72
-            , border
-            , shadow
-            , rounded
-            ]
-        ]
-        [ H.text "Read only Drawing" ]
