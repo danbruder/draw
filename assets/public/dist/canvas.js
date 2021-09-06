@@ -15,6 +15,7 @@ if (typeof window !== "undefined") {
           this.render();
         }
 
+
         static get observedAttributes() {
           return ["width", "height"];
         }

@@ -11556,45 +11556,66 @@ var $author$project$Pages$Room$Id_$subscriptions = function (model) {
 				A2($elm$core$Basics$composeR, doDecode, $author$project$Pages$Room$Id_$GotMessage))
 			]));
 };
+var $author$project$Pages$Room$Id_$GotCanvasFrames = function (a) {
+	return {$: 'GotCanvasFrames', a: a};
+};
 var $author$project$Pages$Room$Id_$SetName = function (a) {
 	return {$: 'SetName', a: a};
 };
 var $author$project$Pages$Room$Id_$SetWord = function (a) {
 	return {$: 'SetWord', a: a};
 };
+var $elm$json$Json$Encode$int = _Json_wrap;
 var $author$project$Pages$Room$Id_$encodeServerMsgOut = function (out) {
-	if (out.$ === 'SetName') {
-		var id = out.a.id;
-		var name = out.a.name;
-		return $elm$json$Json$Encode$object(
-			_List_fromArray(
-				[
-					_Utils_Tuple2(
-					'id',
-					$elm$json$Json$Encode$string(id)),
-					_Utils_Tuple2(
-					'name',
-					$elm$json$Json$Encode$string(name)),
-					_Utils_Tuple2(
-					'type',
-					$elm$json$Json$Encode$string('SetName'))
-				]));
-	} else {
-		var id = out.a.id;
-		var word = out.a.word;
-		return $elm$json$Json$Encode$object(
-			_List_fromArray(
-				[
-					_Utils_Tuple2(
-					'id',
-					$elm$json$Json$Encode$string(id)),
-					_Utils_Tuple2(
-					'word',
-					$elm$json$Json$Encode$string(word)),
-					_Utils_Tuple2(
-					'type',
-					$elm$json$Json$Encode$string('WordSelected'))
-				]));
+	switch (out.$) {
+		case 'SetName':
+			var id = out.a.id;
+			var name = out.a.name;
+			return $elm$json$Json$Encode$object(
+				_List_fromArray(
+					[
+						_Utils_Tuple2(
+						'id',
+						$elm$json$Json$Encode$string(id)),
+						_Utils_Tuple2(
+						'name',
+						$elm$json$Json$Encode$string(name)),
+						_Utils_Tuple2(
+						'type',
+						$elm$json$Json$Encode$string('SetName'))
+					]));
+		case 'SetWord':
+			var id = out.a.id;
+			var word = out.a.word;
+			return $elm$json$Json$Encode$object(
+				_List_fromArray(
+					[
+						_Utils_Tuple2(
+						'id',
+						$elm$json$Json$Encode$string(id)),
+						_Utils_Tuple2(
+						'word',
+						$elm$json$Json$Encode$string(word)),
+						_Utils_Tuple2(
+						'type',
+						$elm$json$Json$Encode$string('WordSelected'))
+					]));
+		default:
+			var id = out.a.id;
+			var frames = out.a.frames;
+			return $elm$json$Json$Encode$object(
+				_List_fromArray(
+					[
+						_Utils_Tuple2(
+						'id',
+						$elm$json$Json$Encode$string(id)),
+						_Utils_Tuple2(
+						'frames',
+						A2($elm$json$Json$Encode$list, $elm$json$Json$Encode$int, frames)),
+						_Utils_Tuple2(
+						'type',
+						$elm$json$Json$Encode$string('GotCanvasFrames'))
+					]));
 	}
 };
 var $author$project$Net$tx = _Platform_outgoingPort('tx', $elm$core$Basics$identity);
@@ -12139,6 +12160,21 @@ var $author$project$Pages$Room$Id_$update = F2(
 				}
 			default:
 				var boardMsg = msg.a;
+				var framesCmd = function () {
+					var _v3 = model.me;
+					if (_v3.$ === 'Just') {
+						var me = _v3.a;
+						return $author$project$Pages$Room$Id_$send(
+							$author$project$Pages$Room$Id_$GotCanvasFrames(
+								{
+									frames: _List_fromArray(
+										[1]),
+									id: me
+								}));
+					} else {
+						return $elm$core$Platform$Cmd$none;
+					}
+				}();
 				var _v2 = A2($author$project$Board$update, boardMsg, model.board);
 				var boardModel = _v2.a;
 				var boardCmd = _v2.b;
@@ -12146,7 +12182,12 @@ var $author$project$Pages$Room$Id_$update = F2(
 					_Utils_update(
 						model,
 						{board: boardModel}),
-					A2($elm$core$Platform$Cmd$map, $author$project$Pages$Room$Id_$BoardMsg, boardCmd));
+					$elm$core$Platform$Cmd$batch(
+						_List_fromArray(
+							[
+								A2($elm$core$Platform$Cmd$map, $author$project$Pages$Room$Id_$BoardMsg, boardCmd),
+								framesCmd
+							])));
 		}
 	});
 var $rtfeldman$elm_css$VirtualDom$Styled$Node = F3(

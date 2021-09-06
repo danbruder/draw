@@ -115,8 +115,21 @@ update msg model =
             let
                 ( boardModel, boardCmd ) =
                     Board.update boardMsg model.board
+
+                framesCmd =
+                    case model.me of
+                        Just me ->
+                            send (GotCanvasFrames { id = me, frames = boardModel.toDraw })
+
+                        Nothing ->
+                            Cmd.none
             in
-            ( { model | board = boardModel }, boardCmd |> Cmd.map BoardMsg )
+            ( { model | board = boardModel }
+            , Cmd.batch
+                [ boardCmd |> Cmd.map BoardMsg
+                , framesCmd
+                ]
+            )
 
 
 type alias ServerMsgIn =
@@ -134,6 +147,10 @@ type ServerMsgOut
         { id : String
         , word : String
         }
+    | GotCanvasFrames
+        { id : String
+        , frames : List Int
+        }
 
 
 encodeServerMsgOut out =
@@ -150,6 +167,13 @@ encodeServerMsgOut out =
                 [ ( "id", JE.string id )
                 , ( "word", JE.string word )
                 , ( "type", JE.string "WordSelected" )
+                ]
+
+        GotCanvasFrames { id, frames } ->
+            JE.object
+                [ ( "id", JE.string id )
+                , ( "frames", JE.list JE.int frames )
+                , ( "type", JE.string "GotCanvasFrames" )
                 ]
 
 
