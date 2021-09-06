@@ -1,4 +1,5 @@
 use futures::{SinkExt, StreamExt, TryFutureExt};
+use serde::Serialize;
 use std::collections::HashMap;
 use std::thread;
 use tokio::sync::mpsc::{self, UnboundedSender};
@@ -10,7 +11,6 @@ use xtra::prelude::*;
 use xtra::spawn::Tokio;
 
 mod dev_server;
-mod drawing;
 mod room;
 mod word;
 use room::Msg;
@@ -54,14 +54,12 @@ impl Room {
             room: room::Room::new(),
         }
     }
+}
 
-    // async fn broadcast(&mut self, msg: (Uuid, String)) {
-    //     for (id, tx) in self.users.iter() {
-    //         if id != &msg.0 {
-    //             tx.send(msg.1.clone()).expect("Could not pipe message back");
-    //         }
-    //     }
-    // }
+#[derive(Serialize)]
+struct Response<'a, T: Serialize> {
+    me: &'a Uuid,
+    payload: &'a T,
 }
 
 // GotUserMessage
@@ -74,7 +72,15 @@ impl Handler<RoomUpdate> for Room {
     async fn handle(&mut self, msg: RoomUpdate, _ctx: &mut Context<Self>) {
         self.room.update(msg.0, msg.1);
         for (user, tx) in self.users.iter() {
-            tx.send(serde_json::to_string(&self.room).unwrap()).unwrap();
+            dbg!(&self.room);
+            tx.send(
+                serde_json::to_string(&Response {
+                    me: user,
+                    payload: &self.room,
+                })
+                .unwrap(),
+            )
+            .unwrap();
         }
     }
 }

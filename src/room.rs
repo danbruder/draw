@@ -1,4 +1,3 @@
-use crate::drawing::DrawingModel;
 use crate::word::Word;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -6,34 +5,97 @@ use uuid::Uuid;
 
 #[derive(Serialize, Clone, Debug)]
 pub struct Room {
-    users: HashMap<Uuid, String>,
+    users: HashMap<Uuid, User>,
     machine: Machine,
+    turn_offset: usize,
 }
 
 #[derive(Serialize, Clone, Debug)]
+pub struct User {
+    name: String,
+    points: i32,
+}
+
+impl User {
+    pub fn new(name: &str) -> Self {
+        Self {
+            name: name.to_string(),
+            points: 0,
+        }
+    }
+}
+
+#[derive(Serialize, Clone, Debug)]
+#[serde(tag = "type")]
 pub enum Machine {
-    Joining,
+    Joining { user_count: usize },
     SelectingWord { artist: Uuid },
     Drawing(DrawingModel),
-    EndOfTurn { artist: Uuid },
+}
+
+#[derive(Serialize, Clone, Debug)]
+pub struct DrawingModel {
+    pub artist: Uuid,
+    pub word: Word,
+    pub seconds_left: i32,
+    pub frames: Vec<u8>,
+    pub guesses: Vec<Guess>,
+}
+
+impl DrawingModel {
+    pub fn new(word: &str, artist: &Uuid) -> Self {
+        let word = Word::new(word);
+        Self {
+            seconds_left: 180,
+            artist: artist.to_owned(),
+            word: word.clone(),
+            frames: vec![],
+            guesses: vec![],
+        }
+    }
+
+    pub fn guess(&mut self, val: &str, user: &Uuid) {
+        let correct = val == self.word.to_string();
+        let guess = Guess::new(val, correct, user);
+        self.guesses.push(guess);
+    }
+}
+
+#[derive(Serialize, Clone, Debug)]
+pub struct Guess {
+    pub val: String,
+    pub correct: bool,
+    pub user: Uuid,
+}
+
+impl Guess {
+    pub fn new(val: &str, correct: bool, user: &Uuid) -> Self {
+        Self {
+            val: val.to_owned(),
+            correct,
+            user: user.to_owned(),
+        }
+    }
 }
 
 impl Room {
     pub fn new() -> Self {
         Self {
             users: HashMap::new(),
-            machine: Machine::Joining,
+            machine: Machine::Joining { user_count: 0 },
+            turn_offset: 0,
         }
     }
 
     pub fn update(&mut self, user: Uuid, msg: Msg) {
         match msg {
             Msg::GotJoin => {
-                self.users.insert(user, "".into());
+                self.users.insert(user, User::new(""));
             }
 
             Msg::SetName { id, name } => {
-                self.users.insert(id, name);
+                self.users.insert(id, User::new(&name));
+                self.machine = Machine::SelectingWord { artist: id.clone() };
             }
             Msg::GotLeave => {
                 self.users.remove(&user);
@@ -53,19 +115,35 @@ impl Room {
                             drawing.word.reveal(1);
                         }
                     } else {
-                        if let Some((new_user, _)) = self.users.iter().take(1).next() {
+                        self.turn_offset += 1;
+                        if let Some((new_user, _)) = self
+                            .users
+                            .iter()
+                            .cycle()
+                            .skip(self.turn_offset)
+                            .take(1)
+                            .next()
+                        {
                             self.machine = Machine::SelectingWord { artist: *new_user };
                         } else {
-                            panic!("atd");
+                            println!("Could not find next user");
                         }
                     }
                 }
                 _ => (),
             },
-            // (Msg::GotCanvasFrames { frames }, Machine::Drawing(mut drawing)) => {
-            //     drawing.frames.extend(frames);
-            // }
-            _ => (),
+            Msg::GotCanvasFrames { frames } => match self.machine {
+                Machine::Drawing(ref mut drawing) => {
+                    drawing.frames.extend(frames);
+                }
+                _ => (),
+            },
+            Msg::GotGuess { guess } => match self.machine {
+                Machine::Drawing(ref mut drawing) => {
+                    drawing.guess(&guess, &user);
+                }
+                _ => (),
+            },
         };
     }
 }

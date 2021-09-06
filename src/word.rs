@@ -1,7 +1,5 @@
-use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use serde::Serialize;
 use std::string::ToString;
-use uuid::Uuid;
 
 #[derive(Serialize, Clone, Debug)]
 pub struct Word {
@@ -15,10 +13,6 @@ impl Word {
             val: val.to_owned(),
             letters: val.chars().map(|_| None).collect(),
         }
-    }
-
-    pub fn letters(&self) -> Vec<Option<char>> {
-        self.letters.clone()
     }
 
     pub fn reveal(&mut self, count: i32) {
@@ -52,7 +46,7 @@ mod test {
     #[test]
     fn reveal_init() {
         let word = Word::new("hey");
-        let got = word.letters();
+        let got = word.letters;
         let want = vec![None, None, None];
 
         assert_eq!(got, want);
@@ -62,7 +56,7 @@ mod test {
     fn reveal_some() {
         let mut word = Word::new("hey");
         word.reveal(1);
-        let got = word.letters();
+        let got = word.letters;
         let want = vec![Some('h'), None, None];
 
         assert_eq!(got, want);
@@ -72,7 +66,7 @@ mod test {
     fn reveal_more() {
         let mut word = Word::new("hey");
         word.reveal(3);
-        let got = word.letters();
+        let got = word.letters;
         let want = vec![Some('h'), Some('e'), Some('y')];
 
         assert_eq!(got, want);
