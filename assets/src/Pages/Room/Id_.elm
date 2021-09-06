@@ -3,7 +3,8 @@ module Pages.Room.Id_ exposing (Model, Msg, page)
 import Css
 import Css.Global
 import Dict exposing (Dict)
-import Domain.Machine as Machine exposing (Machine)
+import Domain.DrawingModel as DrawingModel exposing (DrawingModel)
+import Domain.Machine as Machine exposing (..)
 import Domain.Room as Room exposing (Room)
 import Domain.User as User exposing (User)
 import Gen.Params.Room.Id_ exposing (Params)
@@ -59,6 +60,7 @@ init =
 type Msg
     = TypedInNameField String
     | ClickedSetName
+    | ClickedWord String
     | GotMessage (Result String ServerMsgIn)
 
 
@@ -75,6 +77,16 @@ update msg model =
                 (SetName
                     { id = model.me |> Maybe.withDefault ""
                     , name = model.nameInput
+                    }
+                )
+            )
+
+        ClickedWord word ->
+            ( { model | nameInput = "" }
+            , send
+                (SetWord
+                    { id = model.me |> Maybe.withDefault ""
+                    , word = word
                     }
                 )
             )
@@ -102,6 +114,10 @@ type ServerMsgOut
         { id : String
         , name : String
         }
+    | SetWord
+        { id : String
+        , word : String
+        }
 
 
 encodeServerMsgOut out =
@@ -111,6 +127,13 @@ encodeServerMsgOut out =
                 [ ( "id", JE.string id )
                 , ( "name", JE.string name )
                 , ( "type", JE.string "SetName" )
+                ]
+
+        SetWord { id, word } ->
+            JE.object
+                [ ( "id", JE.string id )
+                , ( "word", JE.string word )
+                , ( "type", JE.string "WordSelected" )
                 ]
 
 
@@ -152,7 +175,19 @@ view model =
         [ H.toUnstyled <|
             H.div []
                 [ Css.Global.global globalStyles
-                , viewUserJoin model
+                , case model.room.machine of
+                    Joining ->
+                        viewUserJoin model
+
+                    SelectingWord { artist } ->
+                        if Just (Debug.log "artist" artist) == Debug.log "me" model.me then
+                            viewSelectAWord model
+
+                        else
+                            viewSomeoneElseIsSelectingAWord model
+
+                    Drawing drawing ->
+                        viewDrawing drawing model
                 ]
         ]
     }
@@ -180,6 +215,41 @@ viewUserJoin model =
             [ H.ul [] <| List.map (\i -> H.li [] [ H.text i.name ]) (Dict.values model.room.users)
             ]
         ]
+
+
+viewSelectAWord : Model -> H.Html Msg
+viewSelectAWord model =
+    H.div []
+        [ H.h1 [] [ H.text "Select A Word" ]
+        , H.div []
+            [ H.ul [] <| List.map (\i -> H.li [ HE.onClick (ClickedWord i) ] [ H.text i ]) sampleWords
+            ]
+        ]
+
+
+viewSomeoneElseIsSelectingAWord : Model -> H.Html Msg
+viewSomeoneElseIsSelectingAWord model =
+    H.div []
+        [ H.h1 [] [ H.text "Someone else is selecting a word" ]
+        ]
+
+
+viewDrawing : DrawingModel -> Model -> H.Html Msg
+viewDrawing drawing model =
+    H.div []
+        [ H.h1 [] [ H.text "Drawing time" ]
+        ]
+
+
+sampleWords =
+    [ "House"
+    , "Garden"
+    , "Superman"
+    , "Cheese"
+    , "Fire"
+    , "Couch"
+    , "Tree"
+    ]
 
 
 viewHeader =
