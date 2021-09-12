@@ -1,6 +1,7 @@
 module Pages.Room.Id_ exposing (Model, Msg, page)
 
 import Board
+import Canvas
 import Css
 import Css.Global
 import Dict exposing (Dict)
@@ -126,18 +127,18 @@ update msg model =
                 ( boardModel, boardCmd ) =
                     Board.update boardMsg model.board
 
-                -- framesCmd =
-                --     case model.me of
-                --         Just me ->
-                --             send (GotCanvasFrames { id = me, frames = boardModel.toDraw })
-                --         Nothing ->
-                --             Cmd.none
+                framesCmd =
+                    case ( List.length boardModel.toDraw > 0, model.me ) of
+                        ( True, Just me ) ->
+                            send (GotCanvasFrames { id = me, frames = boardModel.toDraw })
+
+                        _ ->
+                            Cmd.none
             in
             ( { model | board = boardModel }
             , Cmd.batch
                 [ boardCmd |> Cmd.map BoardMsg
-
-                --, framesCmd
+                , framesCmd
                 ]
             )
 
@@ -160,13 +161,10 @@ type ServerMsgOut
     | StartGame
         { id : String
         }
-
-
-
--- | GotCanvasFrames
---     { id : String
---     , frames : List Int
---     }
+    | GotCanvasFrames
+        { id : String
+        , frames : List Canvas.Renderable
+        }
 
 
 encodeServerMsgOut out =
@@ -191,14 +189,12 @@ encodeServerMsgOut out =
                 , ( "type", JE.string "StartGame" )
                 ]
 
-
-
--- GotCanvasFrames { id, frames } ->
---     JE.object
---         [ ( "id", JE.string id )
---         , ( "frames", JE.list JE.int frames )
---         , ( "type", JE.string "GotCanvasFrames" )
---         ]
+        GotCanvasFrames { id, frames } ->
+            JE.object
+                [ ( "id", JE.string id )
+                , ( "frames", JE.list Canvas.encodeRenderable frames )
+                , ( "type", JE.string "GotCanvasFrames" )
+                ]
 
 
 serverMsgInDecoder =
@@ -226,8 +222,10 @@ subscriptions model =
                     )
     in
     Sub.batch
-        [ --Board.subscriptions model.board |> Sub.map BoardMsg
-          Net.rx (doDecode >> GotMessage)
+        [ Board.subscriptions model.board
+            |> Sub.map BoardMsg
+        , Net.rx
+            (doDecode >> GotMessage)
         ]
 
 
@@ -335,6 +333,5 @@ viewDrawing : DrawingModel -> Model -> H.Html Msg
 viewDrawing drawing model =
     H.div []
         [ H.h1 [] [ H.text "Drawing time" ]
-
-        --, Board.view model.board |> H.fromUnstyled |> H.map BoardMsg
+        , Board.view model.board |> H.fromUnstyled |> H.map BoardMsg
         ]

@@ -1,5 +1,6 @@
 use crate::word::Word;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use std::collections::HashMap;
 use uuid::Uuid;
 
@@ -38,7 +39,7 @@ pub struct DrawingModel {
     pub artist: Uuid,
     pub word: Word,
     pub seconds_left: i32,
-    pub frames: Vec<u8>,
+    pub frames: Vec<Value>,
     pub guesses: Vec<Guess>,
 }
 
@@ -160,7 +161,7 @@ pub enum Msg {
     StartGame,
     // Playing flow
     WordSelected { word: String },
-    GotCanvasFrames { frames: Vec<u8> },
+    GotCanvasFrames { frames: Vec<Value> },
     Tick,
     GotGuess { guess: String },
 }
