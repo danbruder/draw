@@ -11423,39 +11423,55 @@ var $author$project$Pages$Room$Id_$SetName = function (a) {
 var $author$project$Pages$Room$Id_$SetWord = function (a) {
 	return {$: 'SetWord', a: a};
 };
+var $author$project$Pages$Room$Id_$StartGame = function (a) {
+	return {$: 'StartGame', a: a};
+};
 var $author$project$Pages$Room$Id_$encodeServerMsgOut = function (out) {
-	if (out.$ === 'SetName') {
-		var id = out.a.id;
-		var name = out.a.name;
-		return $elm$json$Json$Encode$object(
-			_List_fromArray(
-				[
-					_Utils_Tuple2(
-					'id',
-					$elm$json$Json$Encode$string(id)),
-					_Utils_Tuple2(
-					'name',
-					$elm$json$Json$Encode$string(name)),
-					_Utils_Tuple2(
-					'type',
-					$elm$json$Json$Encode$string('SetName'))
-				]));
-	} else {
-		var id = out.a.id;
-		var word = out.a.word;
-		return $elm$json$Json$Encode$object(
-			_List_fromArray(
-				[
-					_Utils_Tuple2(
-					'id',
-					$elm$json$Json$Encode$string(id)),
-					_Utils_Tuple2(
-					'word',
-					$elm$json$Json$Encode$string(word)),
-					_Utils_Tuple2(
-					'type',
-					$elm$json$Json$Encode$string('WordSelected'))
-				]));
+	switch (out.$) {
+		case 'SetName':
+			var id = out.a.id;
+			var name = out.a.name;
+			return $elm$json$Json$Encode$object(
+				_List_fromArray(
+					[
+						_Utils_Tuple2(
+						'id',
+						$elm$json$Json$Encode$string(id)),
+						_Utils_Tuple2(
+						'name',
+						$elm$json$Json$Encode$string(name)),
+						_Utils_Tuple2(
+						'type',
+						$elm$json$Json$Encode$string('SetName'))
+					]));
+		case 'SetWord':
+			var id = out.a.id;
+			var word = out.a.word;
+			return $elm$json$Json$Encode$object(
+				_List_fromArray(
+					[
+						_Utils_Tuple2(
+						'id',
+						$elm$json$Json$Encode$string(id)),
+						_Utils_Tuple2(
+						'word',
+						$elm$json$Json$Encode$string(word)),
+						_Utils_Tuple2(
+						'type',
+						$elm$json$Json$Encode$string('WordSelected'))
+					]));
+		default:
+			var id = out.a.id;
+			return $elm$json$Json$Encode$object(
+				_List_fromArray(
+					[
+						_Utils_Tuple2(
+						'id',
+						$elm$json$Json$Encode$string(id)),
+						_Utils_Tuple2(
+						'type',
+						$elm$json$Json$Encode$string('StartGame'))
+					]));
 	}
 };
 var $author$project$Net$tx = _Platform_outgoingPort('tx', $elm$core$Basics$identity);
@@ -11962,6 +11978,14 @@ var $author$project$Pages$Room$Id_$update = F2(
 							{
 								id: A2($elm$core$Maybe$withDefault, '', model.me),
 								name: model.nameInput
+							})));
+			case 'ClickedStartGame':
+				return _Utils_Tuple2(
+					model,
+					$author$project$Pages$Room$Id_$send(
+						$author$project$Pages$Room$Id_$StartGame(
+							{
+								id: A2($elm$core$Maybe$withDefault, '', model.me)
 							})));
 			case 'ClickedWord':
 				var word = msg.a;
@@ -14697,9 +14721,11 @@ var $author$project$Pages$Room$Id_$viewSomeoneElseIsSelectingAWord = function (m
 			]));
 };
 var $author$project$Pages$Room$Id_$ClickedSetName = {$: 'ClickedSetName'};
+var $author$project$Pages$Room$Id_$ClickedStartGame = {$: 'ClickedStartGame'};
 var $author$project$Pages$Room$Id_$TypedInNameField = function (a) {
 	return {$: 'TypedInNameField', a: a};
 };
+var $rtfeldman$elm_css$Html$Styled$button = $rtfeldman$elm_css$Html$Styled$node('button');
 var $rtfeldman$elm_css$Html$Styled$form = $rtfeldman$elm_css$Html$Styled$node('form');
 var $rtfeldman$elm_css$Html$Styled$input = $rtfeldman$elm_css$Html$Styled$node('input');
 var $rtfeldman$elm_css$Html$Styled$Events$alwaysStop = function (x) {
@@ -14840,6 +14866,22 @@ var $author$project$Pages$Room$Id_$viewUserJoin = function (model) {
 										]));
 							},
 							$elm$core$Dict$values(model.room.users)))
+					])),
+				A2(
+				$rtfeldman$elm_css$Html$Styled$div,
+				_List_Nil,
+				_List_fromArray(
+					[
+						A2(
+						$rtfeldman$elm_css$Html$Styled$button,
+						_List_fromArray(
+							[
+								$rtfeldman$elm_css$Html$Styled$Events$onClick($author$project$Pages$Room$Id_$ClickedStartGame)
+							]),
+						_List_fromArray(
+							[
+								$rtfeldman$elm_css$Html$Styled$text('Start!')
+							]))
 					]))
 			]));
 };
@@ -15268,4 +15310,4 @@ var $author$project$Main$view = function (model) {
 };
 var $author$project$Main$main = $elm$browser$Browser$application(
 	{init: $author$project$Main$init, onUrlChange: $author$project$Main$ChangedUrl, onUrlRequest: $author$project$Main$ClickedLink, subscriptions: $author$project$Main$subscriptions, update: $author$project$Main$update, view: $author$project$Main$view});
-_Platform_export({'Main':{'init':$author$project$Main$main($elm$json$Json$Decode$value)({"versions":{"elm":"0.19.1"},"types":{"message":"Main.Msg","aliases":{"Gen.Pages.Msg":{"args":[],"type":"Gen.Msg.Msg"},"Url.Url":{"args":[],"type":"{ protocol : Url.Protocol, host : String.String, port_ : Maybe.Maybe Basics.Int, path : String.String, query : Maybe.Maybe String.String, fragment : Maybe.Maybe String.String }"},"Domain.Room.Room":{"args":[],"type":"{ users : Dict.Dict String.String Domain.User.User, turnOffset : Basics.Int, machine : Domain.Machine.Machine }"},"Pages.Room.Id_.ServerMsgIn":{"args":[],"type":"{ me : String.String, room : Domain.Room.Room }"},"Domain.User.User":{"args":[],"type":"{ name : String.String, points : Basics.Int }"},"Domain.DrawingModel.DrawingModel":{"args":[],"type":"{ artist : String.String, word : Domain.Word.Word, secondsLeft : Basics.Int, frames : List.List Basics.Int, guesses : List.List Domain.Guess.Guess }"},"Domain.Guess.Guess":{"args":[],"type":"{ val : String.String, correct : Basics.Bool, user : String.String }"},"Domain.Word.Word":{"args":[],"type":"{ val : String.String, letters : List.List (Maybe.Maybe String.String) }"}},"unions":{"Main.Msg":{"args":[],"tags":{"ChangedUrl":["Url.Url"],"ClickedLink":["Browser.UrlRequest"],"Shared":["Shared.Msg"],"Page":["Gen.Pages.Msg"]}},"Basics.Int":{"args":[],"tags":{"Int":[]}},"Maybe.Maybe":{"args":["a"],"tags":{"Just":["a"],"Nothing":[]}},"Gen.Msg.Msg":{"args":[],"tags":{"Room__Id_":["Pages.Room.Id_.Msg"]}},"Shared.Msg":{"args":[],"tags":{"NoOp":[]}},"Url.Protocol":{"args":[],"tags":{"Http":[],"Https":[]}},"String.String":{"args":[],"tags":{"String":[]}},"Browser.UrlRequest":{"args":[],"tags":{"Internal":["Url.Url"],"External":["String.String"]}},"Pages.Room.Id_.Msg":{"args":[],"tags":{"TypedInNameField":["String.String"],"ClickedSetName":[],"ClickedWord":["String.String"],"GotMessage":["Result.Result String.String Pages.Room.Id_.ServerMsgIn"],"BoardMsg":["Board.Msg"]}},"Dict.Dict":{"args":["k","v"],"tags":{"RBNode_elm_builtin":["Dict.NColor","k","v","Dict.Dict k v","Dict.Dict k v"],"RBEmpty_elm_builtin":[]}},"Domain.Machine.Machine":{"args":[],"tags":{"Joining":[],"SelectingWord":["{ artist : String.String }"],"Drawing":["Domain.DrawingModel.DrawingModel"]}},"Board.Msg":{"args":[],"tags":{"AnimationFrame":["Basics.Float"],"StartAt":["( Basics.Float, Basics.Float )"],"MoveAt":["( Basics.Float, Basics.Float )"],"EndAt":["( Basics.Float, Basics.Float )"],"SelectColor":["Color.Color"],"SelectSize":["Basics.Int"]}},"Result.Result":{"args":["error","value"],"tags":{"Ok":["value"],"Err":["error"]}},"Basics.Bool":{"args":[],"tags":{"True":[],"False":[]}},"Color.Color":{"args":[],"tags":{"RgbaSpace":["Basics.Float","Basics.Float","Basics.Float","Basics.Float"]}},"Basics.Float":{"args":[],"tags":{"Float":[]}},"List.List":{"args":["a"],"tags":{}},"Dict.NColor":{"args":[],"tags":{"Red":[],"Black":[]}}}}})}});}(this));
+_Platform_export({'Main':{'init':$author$project$Main$main($elm$json$Json$Decode$value)({"versions":{"elm":"0.19.1"},"types":{"message":"Main.Msg","aliases":{"Gen.Pages.Msg":{"args":[],"type":"Gen.Msg.Msg"},"Url.Url":{"args":[],"type":"{ protocol : Url.Protocol, host : String.String, port_ : Maybe.Maybe Basics.Int, path : String.String, query : Maybe.Maybe String.String, fragment : Maybe.Maybe String.String }"},"Domain.Room.Room":{"args":[],"type":"{ users : Dict.Dict String.String Domain.User.User, turnOffset : Basics.Int, machine : Domain.Machine.Machine }"},"Pages.Room.Id_.ServerMsgIn":{"args":[],"type":"{ me : String.String, room : Domain.Room.Room }"},"Domain.User.User":{"args":[],"type":"{ name : String.String, points : Basics.Int }"},"Domain.DrawingModel.DrawingModel":{"args":[],"type":"{ artist : String.String, word : Domain.Word.Word, secondsLeft : Basics.Int, frames : List.List Basics.Int, guesses : List.List Domain.Guess.Guess }"},"Domain.Guess.Guess":{"args":[],"type":"{ val : String.String, correct : Basics.Bool, user : String.String }"},"Domain.Word.Word":{"args":[],"type":"{ val : String.String, letters : List.List (Maybe.Maybe String.String) }"}},"unions":{"Main.Msg":{"args":[],"tags":{"ChangedUrl":["Url.Url"],"ClickedLink":["Browser.UrlRequest"],"Shared":["Shared.Msg"],"Page":["Gen.Pages.Msg"]}},"Basics.Int":{"args":[],"tags":{"Int":[]}},"Maybe.Maybe":{"args":["a"],"tags":{"Just":["a"],"Nothing":[]}},"Gen.Msg.Msg":{"args":[],"tags":{"Room__Id_":["Pages.Room.Id_.Msg"]}},"Shared.Msg":{"args":[],"tags":{"NoOp":[]}},"Url.Protocol":{"args":[],"tags":{"Http":[],"Https":[]}},"String.String":{"args":[],"tags":{"String":[]}},"Browser.UrlRequest":{"args":[],"tags":{"Internal":["Url.Url"],"External":["String.String"]}},"Pages.Room.Id_.Msg":{"args":[],"tags":{"TypedInNameField":["String.String"],"ClickedSetName":[],"ClickedWord":["String.String"],"ClickedStartGame":[],"GotMessage":["Result.Result String.String Pages.Room.Id_.ServerMsgIn"],"BoardMsg":["Board.Msg"]}},"Dict.Dict":{"args":["k","v"],"tags":{"RBNode_elm_builtin":["Dict.NColor","k","v","Dict.Dict k v","Dict.Dict k v"],"RBEmpty_elm_builtin":[]}},"Domain.Machine.Machine":{"args":[],"tags":{"Joining":[],"SelectingWord":["{ artist : String.String }"],"Drawing":["Domain.DrawingModel.DrawingModel"]}},"Board.Msg":{"args":[],"tags":{"AnimationFrame":["Basics.Float"],"StartAt":["( Basics.Float, Basics.Float )"],"MoveAt":["( Basics.Float, Basics.Float )"],"EndAt":["( Basics.Float, Basics.Float )"],"SelectColor":["Color.Color"],"SelectSize":["Basics.Int"]}},"Result.Result":{"args":["error","value"],"tags":{"Ok":["value"],"Err":["error"]}},"Basics.Bool":{"args":[],"tags":{"True":[],"False":[]}},"Color.Color":{"args":[],"tags":{"RgbaSpace":["Basics.Float","Basics.Float","Basics.Float","Basics.Float"]}},"Basics.Float":{"args":[],"tags":{"Float":[]}},"List.List":{"args":["a"],"tags":{}},"Dict.NColor":{"args":[],"tags":{"Red":[],"Black":[]}}}}})}});}(this));

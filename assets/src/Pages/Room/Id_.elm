@@ -69,6 +69,7 @@ type Msg
     = TypedInNameField String
     | ClickedSetName
     | ClickedWord String
+    | ClickedStartGame
     | GotMessage (Result String ServerMsgIn)
     | BoardMsg Board.Msg
 
@@ -86,6 +87,15 @@ update msg model =
                 (SetName
                     { id = model.me |> Maybe.withDefault ""
                     , name = model.nameInput
+                    }
+                )
+            )
+
+        ClickedStartGame ->
+            ( model
+            , send
+                (StartGame
+                    { id = model.me |> Maybe.withDefault ""
                     }
                 )
             )
@@ -147,6 +157,9 @@ type ServerMsgOut
         { id : String
         , word : String
         }
+    | StartGame
+        { id : String
+        }
 
 
 
@@ -170,6 +183,12 @@ encodeServerMsgOut out =
                 [ ( "id", JE.string id )
                 , ( "word", JE.string word )
                 , ( "type", JE.string "WordSelected" )
+                ]
+
+        StartGame { id } ->
+            JE.object
+                [ ( "id", JE.string id )
+                , ( "type", JE.string "StartGame" )
                 ]
 
 
@@ -261,6 +280,9 @@ viewUserJoin model =
             ]
         , H.div []
             [ H.ul [] <| List.map (\i -> H.li [] [ H.text i.name ]) (Dict.values model.room.users)
+            ]
+        , H.div []
+            [ H.button [ HE.onClick ClickedStartGame ] [ H.text "Start!" ]
             ]
         ]
 
