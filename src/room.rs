@@ -95,7 +95,9 @@ impl Room {
 
             Msg::SetName { id, name } => {
                 self.users.insert(id, User::new(&name));
-                self.machine = Machine::SelectingWord { artist: id.clone() };
+            }
+            Msg::StartGame => {
+                self.machine = Machine::SelectingWord { artist: user };
             }
             Msg::GotLeave => {
                 self.users.remove(&user);
@@ -148,13 +150,14 @@ impl Room {
     }
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 #[serde(tag = "type")]
 pub enum Msg {
     // Joining flow
     GotJoin,
     GotLeave,
     SetName { id: Uuid, name: String },
+    StartGame,
     // Playing flow
     WordSelected { word: String },
     GotCanvasFrames { frames: Vec<u8> },

@@ -5,14 +5,14 @@ use std::time::Duration;
 
 pub fn watch() {
     let (tx, rx) = channel();
-    let mut watcher = watcher(tx, Duration::from_secs(10)).unwrap();
+    let mut watcher = watcher(tx, Duration::from_secs(1)).unwrap();
 
     watcher
         .watch("assets/src", RecursiveMode::Recursive)
         .unwrap();
 
     Command::new("open")
-        .arg("http://localhost:3030")
+        .arg("http://localhost:3030/room/123")
         .spawn()
         .expect("could not open browser");
 

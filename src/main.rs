@@ -32,8 +32,18 @@ async fn main() {
         .and(room)
         .map(|ws: warp::ws::Ws, room| ws.on_upgrade(move |socket| user_connected(socket, room)));
 
-    let index = warp::any().and(warp::fs::file("assets/public/index.html"));
-    let dist = warp::path("dist").and(warp::fs::dir("assets/public/dist"));
+    let index = warp::any()
+        .and(warp::fs::file("assets/public/index.html"))
+        .with(warp::reply::with::header(
+            "Cache-Control",
+            "max-age=0, private, must-revalidate",
+        ));
+    let dist = warp::path("dist")
+        .and(warp::fs::dir("assets/public/dist"))
+        .with(warp::reply::with::header(
+            "Cache-Control",
+            "max-age=0, private, must-revalidate",
+        ));
 
     let routes = dist.or(chat).or(index);
 
@@ -72,7 +82,6 @@ impl Handler<RoomUpdate> for Room {
     async fn handle(&mut self, msg: RoomUpdate, _ctx: &mut Context<Self>) {
         self.room.update(msg.0, msg.1);
         for (user, tx) in self.users.iter() {
-            dbg!(&self.room);
             tx.send(
                 serde_json::to_string(&Response {
                     me: user,
@@ -94,6 +103,7 @@ impl Message for GotUserMessage {
 impl Handler<GotUserMessage> for Room {
     async fn handle(&mut self, msg: GotUserMessage, ctx: &mut Context<Self>) {
         if let Ok(inner_msg) = serde_json::from_str::<room::Msg>(&msg.1) {
+            dbg!(&inner_msg);
             ctx.notify(RoomUpdate(msg.0, inner_msg));
         } else {
             println!("Ignoring unknown message {}", &msg.1);

@@ -116,18 +116,18 @@ update msg model =
                 ( boardModel, boardCmd ) =
                     Board.update boardMsg model.board
 
-                framesCmd =
-                    case model.me of
-                        Just me ->
-                            send (GotCanvasFrames { id = me, frames = boardModel.toDraw })
-
-                        Nothing ->
-                            Cmd.none
+                -- framesCmd =
+                --     case model.me of
+                --         Just me ->
+                --             send (GotCanvasFrames { id = me, frames = boardModel.toDraw })
+                --         Nothing ->
+                --             Cmd.none
             in
             ( { model | board = boardModel }
             , Cmd.batch
                 [ boardCmd |> Cmd.map BoardMsg
-                , framesCmd
+
+                --, framesCmd
                 ]
             )
 
@@ -147,10 +147,13 @@ type ServerMsgOut
         { id : String
         , word : String
         }
-    | GotCanvasFrames
-        { id : String
-        , frames : List Int
-        }
+
+
+
+-- | GotCanvasFrames
+--     { id : String
+--     , frames : List Int
+--     }
 
 
 encodeServerMsgOut out =
@@ -169,12 +172,14 @@ encodeServerMsgOut out =
                 , ( "type", JE.string "WordSelected" )
                 ]
 
-        GotCanvasFrames { id, frames } ->
-            JE.object
-                [ ( "id", JE.string id )
-                , ( "frames", JE.list JE.int frames )
-                , ( "type", JE.string "GotCanvasFrames" )
-                ]
+
+
+-- GotCanvasFrames { id, frames } ->
+--     JE.object
+--         [ ( "id", JE.string id )
+--         , ( "frames", JE.list JE.int frames )
+--         , ( "type", JE.string "GotCanvasFrames" )
+--         ]
 
 
 serverMsgInDecoder =
@@ -202,8 +207,8 @@ subscriptions model =
                     )
     in
     Sub.batch
-        [ Board.subscriptions model.board |> Sub.map BoardMsg
-        , Net.rx (doDecode >> GotMessage)
+        [ --Board.subscriptions model.board |> Sub.map BoardMsg
+          Net.rx (doDecode >> GotMessage)
         ]
 
 
@@ -308,5 +313,6 @@ viewDrawing : DrawingModel -> Model -> H.Html Msg
 viewDrawing drawing model =
     H.div []
         [ H.h1 [] [ H.text "Drawing time" ]
-        , Board.view model.board |> H.fromUnstyled |> H.map BoardMsg
+
+        --, Board.view model.board |> H.fromUnstyled |> H.map BoardMsg
         ]
